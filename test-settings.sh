@@ -3,7 +3,7 @@
 # Test script for Admin Settings functionality
 # This script tests the Settings API endpoints
 
-API_URL="${API_URL:-http://localhost:5000/api}"
+API_URL="${API_URL:-https://foneworldecom.onrender.com/api}"
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin123}"
 

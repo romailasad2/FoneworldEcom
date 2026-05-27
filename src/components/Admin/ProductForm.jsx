@@ -67,7 +67,7 @@ const ProductForm = ({ product, branches, onClose, onSuccess, branchLocked = fal
       // Set image preview if product has image
       if (product.image) {
         if (product.image.startsWith('/uploads/')) {
-          setImagePreview(`http://localhost:5000${product.image}`)
+          setImagePreview(`https://foneworldecom.onrender.com${product.image}`)
         } else {
           setImagePreview(product.image)
         }

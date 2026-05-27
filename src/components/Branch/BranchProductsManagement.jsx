@@ -131,7 +131,7 @@ const BranchProductsManagement = ({ branchId, branchName }) => {
               ) : (
                 products.map(product => {
                   const imageSrc = product.image && product.image.startsWith('/uploads/')
-                    ? `http://localhost:5000${product.image}`
+                    ? `https://foneworldecom.onrender.com${product.image}`
                     : product.image || 'https://via.placeholder.com/50?text=No+Image'
                   
                   const handleImageError = (e) => {

@@ -13,7 +13,7 @@ const ProductCard = ({ product, branches }) => {
       <div className="product-image-container">
         <img
           src={product.image && product.image.startsWith('/uploads/') 
-            ? `http://localhost:5000${product.image}` 
+            ? `https://foneworldecom.onrender.com${product.image}` 
             : product.image || 'https://via.placeholder.com/200x200?text=Mobile+Phone'}
           alt={product.name}
           className="product-image"
