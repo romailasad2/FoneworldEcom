@@ -179,7 +179,7 @@ class Database {
       const adminCount = await this.get('SELECT COUNT(*) as count FROM admin_users');
       if (adminCount.count === 0) {
         const bcrypt = await import('bcryptjs');
-        const hashedPassword = await bcrypt.hashsync('admin123', 10);
+        const hashedPassword = await bcrypt.hashSync('admin123', 10);
         await this.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', ['admin', hashedPassword]);
         console.log('Default admin user created: username=admin, password=admin123');
       }
