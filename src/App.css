@@ -1,0 +1,43 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Mobile devices (up to 640px) */
+@media (max-width: 640px) {
+  .main-content {
+    padding: 0.75rem;
+  }
+}
+
+/* Tablets and small screens (641px - 768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+  .main-content {
+    padding: 1.25rem;
+  }
+}
+
+/* iPads and medium screens (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .main-content {
+    padding: 1.5rem;
+  }
+}
+
+/* Large screens (1025px and above) */
+@media (min-width: 1025px) {
+  .main-content {
+    padding: 2rem;
+  }
+}
+
+

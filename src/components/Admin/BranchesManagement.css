@@ -1,0 +1,253 @@
+/* Styles moved to Dashboard.css for section-header and dashboard-content */
+
+.branches-table-container {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.branches-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.branches-table thead {
+  background: var(--gray-100);
+}
+
+.branches-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--gray-700);
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.branches-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  color: var(--gray-700);
+}
+
+.branches-table tbody tr:hover {
+  background: var(--gray-50);
+}
+
+.branch-name-cell {
+  font-weight: 600;
+  color: var(--primary-red);
+}
+
+.branch-address-cell {
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+.credentials-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.credentials-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--gray-700);
+  font-size: 0.9rem;
+}
+
+.username-display {
+  font-weight: 600;
+  color: var(--primary-red);
+}
+
+.add-credentials-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--primary-red);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.add-credentials-button:hover {
+  background: var(--primary-red-dark);
+  transform: translateY(-1px);
+}
+
+.manage-credentials-button,
+.delete-credentials-button {
+  background: none;
+  border: none;
+  padding: 0.35rem;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.manage-credentials-button {
+  color: var(--primary-red);
+}
+
+.manage-credentials-button:hover {
+  background: var(--gray-100);
+}
+
+.delete-credentials-button {
+  color: #DC2626;
+}
+
+.delete-credentials-button:hover {
+  background: #FEE2E2;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.edit-button,
+.delete-button {
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.edit-button {
+  color: var(--primary-red);
+}
+
+.edit-button:hover {
+  background: var(--gray-100);
+}
+
+.delete-button {
+  color: #DC2626;
+}
+
+.delete-button:hover {
+  background: #FEE2E2;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--gray-500);
+}
+
+.branch-users-section {
+  margin-top: 3rem;
+}
+
+.branch-users-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primary-red);
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.branch-users-table-container {
+  background: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.branch-users-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.branch-users-table thead {
+  background: var(--gray-100);
+}
+
+.branch-users-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--gray-700);
+  border-bottom: 2px solid var(--gray-200);
+}
+
+.branch-users-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--gray-200);
+  color: var(--gray-700);
+}
+
+.branch-users-table tbody tr:hover {
+  background: var(--gray-50);
+}
+
+.username-cell {
+  font-weight: 600;
+  color: var(--primary-red);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  font-size: 1.2rem;
+  color: var(--gray-600);
+}
+
+.error-banner {
+  background: #FEE2E2;
+  color: #DC2626;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  border: 1px solid #FCA5A5;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .branches-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .branches-content {
+    padding: 1rem;
+  }
+
+  .branches-table-container,
+  .branch-users-table-container {
+    overflow-x: auto;
+  }
+
+  .branches-table,
+  .branch-users-table {
+    min-width: 600px;
+  }
+
+  .branch-address-cell {
+    max-width: 200px;
+  }
+}
+

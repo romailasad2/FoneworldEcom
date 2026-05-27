@@ -1,0 +1,112 @@
+.admin-product-listing {
+  padding: 0;
+  background: var(--gray-50);
+  min-height: calc(100vh - 200px);
+}
+
+.admin-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+  padding: 0 2rem;
+}
+
+.admin-header-actions .create-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--primary-red);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.admin-header-actions .create-button:hover {
+  background: var(--primary-red-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.admin-error-banner {
+  margin: 0 2rem 1.5rem 2rem;
+  background: #FEE2E2;
+  color: #DC2626;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #FCA5A5;
+}
+
+.admin-product-listing .listing-header {
+  padding: 0 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-product-listing .search-and-filters {
+  padding: 0 2rem;
+}
+
+.admin-product-listing .listing-content {
+  padding: 0 2rem 2rem 2rem;
+}
+
+.filtered-count {
+  color: var(--gray-500);
+  font-weight: normal;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .admin-header-actions {
+    padding: 0 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-header-actions .create-button {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .admin-error-banner {
+    margin: 0 1rem 1rem 1rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .admin-product-listing .listing-header {
+    padding: 0 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-product-listing .search-and-filters {
+    padding: 0 1rem;
+  }
+
+  .admin-product-listing .listing-content {
+    padding: 0 1rem 1rem 1rem;
+  }
+}
+
+/* Tablets and small screens */
+@media (min-width: 641px) and (max-width: 768px) {
+  .admin-header-actions {
+    padding: 0 1.5rem;
+  }
+
+  .admin-product-listing .listing-header,
+  .admin-product-listing .search-and-filters,
+  .admin-product-listing .listing-content {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+
+
+

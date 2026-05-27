@@ -1,0 +1,63 @@
+/* Reuse styles from ProductForm.css */
+@import './ProductForm.css';
+
+.branch-form {
+  padding: 2rem;
+}
+
+.branch-form .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-divider {
+  margin: 2rem 0 1.5rem 0;
+  padding-top: 2rem;
+  border-top: 2px solid var(--gray-200);
+}
+
+.form-divider h3 {
+  font-size: 1.1rem;
+  color: var(--primary-red);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-divider p {
+  font-size: 0.9rem;
+  color: var(--gray-600);
+  margin: 0;
+}
+
+.form-info {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+
+.form-info p {
+  margin: 0;
+  color: #1E40AF;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .branch-form {
+    padding: 1rem;
+  }
+
+  .branch-form .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-divider {
+    margin: 1.5rem 0 1rem 0;
+    padding-top: 1.5rem;
+  }
+}
+

@@ -1,0 +1,366 @@
+.product-listing {
+  width: 100%;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 1.25rem;
+  color: var(--gray-600);
+}
+
+.listing-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  color: var(--primary-red);
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  color: var(--gray-600);
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.search-and-filters {
+  margin-bottom: 2rem;
+}
+
+.search-bar-container {
+  margin-bottom: 1rem;
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  transition: border-color 0.2s;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.search-bar:focus-within {
+  border-color: var(--primary-red);
+}
+
+.search-icon {
+  color: var(--gray-400);
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  color: var(--gray-900);
+}
+
+.search-input::placeholder {
+  color: var(--gray-400);
+}
+
+.clear-search {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.clear-search:hover {
+  color: var(--primary-red);
+}
+
+.controls-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Mobile devices (up to 640px) */
+@media (max-width: 640px) {
+  .controls-row {
+    gap: 0.75rem;
+  }
+
+  .filter-toggle,
+  .clear-filters-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.9rem;
+    min-height: 44px;
+  }
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--white);
+  border: 2px solid var(--primary-red);
+  color: var(--primary-red);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  min-height: 44px;
+}
+
+.filter-toggle:hover {
+  background: var(--primary-red);
+  color: var(--white);
+}
+
+.filter-toggle.active {
+  background: var(--primary-red);
+  color: var(--white);
+}
+
+.filter-badge {
+  background: var(--white);
+  color: var(--primary-red);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 0.25rem;
+}
+
+.sort-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--gray-300);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--white);
+  color: var(--gray-900);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  min-height: 44px;
+}
+
+.sort-select:focus {
+  border-color: var(--primary-red);
+}
+
+.clear-filters-btn {
+  padding: 0.75rem 1.5rem;
+  background: var(--gray-200);
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+}
+
+.clear-filters-btn:hover {
+  background: var(--gray-300);
+  color: var(--gray-900);
+}
+
+.listing-content {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.products-section {
+  flex: 1;
+  min-width: 0;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.results-info {
+  color: var(--gray-600);
+  font-size: 0.9rem;
+}
+
+.results-info strong {
+  color: var(--gray-900);
+  font-weight: 600;
+}
+
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sort-controls label {
+  font-size: 0.9rem;
+  color: var(--gray-700);
+  font-weight: 500;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  max-width: 100%;
+  align-items: start;
+}
+
+/* Large screens (1400px and above) - 4 columns */
+@media (min-width: 1400px) {
+  .products-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+.no-results {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--gray-500);
+}
+
+.no-results svg {
+  margin-bottom: 1rem;
+  color: var(--gray-400);
+}
+
+.no-results h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--gray-700);
+}
+
+.no-results p {
+  margin-bottom: 1.5rem;
+}
+
+/* Mobile devices (up to 640px) */
+@media (max-width: 640px) {
+  .page-title {
+    font-size: 1.75rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(1, 1fr);
+    gap: 1rem;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .sort-controls {
+    width: 100%;
+  }
+
+  .sort-select {
+    width: 100%;
+  }
+
+  .search-bar {
+    padding: 0.625rem 0.875rem;
+  }
+
+  .search-input {
+    font-size: 0.9rem;
+  }
+
+  .listing-header {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Tablets and small screens (641px - 768px) */
+@media (min-width: 641px) and (max-width: 768px) {
+  .page-title {
+    font-size: 2rem;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .listing-content {
+    gap: 1.5rem;
+  }
+}
+
+/* iPads and medium screens (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .listing-content {
+    flex-direction: column;
+  }
+
+  .filter-panel {
+    position: relative;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .page-title {
+    font-size: 2.25rem;
+  }
+}
+
+/* Large tablets and small desktops (1025px - 1399px) */
+@media (min-width: 1025px) and (max-width: 1399px) {
+  .listing-content {
+    gap: 2rem;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+}
+
