@@ -179,10 +179,12 @@ class Database {
       // Insert default admin user if it doesn't exist
       const adminCount = await this.get('SELECT COUNT(*) as count FROM admin_users');
       if (adminCount.count === 0) {
-        const bcrypt = await import('bcryptjs');
-        const hashedPassword = await bcrypt.hashSync('admin123', 10);
-        await this.run('INSERT INTO admin_users (username, password) VALUES (?, ?)', ['admin', hashedPassword]);
-        console.log('Default admin user created: username=admin, password=admin123');
+        const hashedPassword = bcrypt.hashSync('admin123', 10);
+
+        await this.run(
+          'INSERT INTO admin_users (username, password) VALUES (?, ?)',
+          ['admin', hashedPassword]
+        );
       }
 
       // Insert sample products if they don't exist
