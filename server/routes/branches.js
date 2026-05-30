@@ -8,7 +8,7 @@ const router = express.Router();
 // Get all branches (public)
 router.get('/', async (req, res) => {
   try {
-    const branches = await db.all('SELECT * FROM branches ORDER BY name');
+    const branches = await db.branch.findMany({ orderBy: { name: 'asc' } });
     res.json(branches);
   } catch (error) {
     console.error('Error fetching branches:', error);
@@ -19,12 +19,12 @@ router.get('/', async (req, res) => {
 // Get single branch (public)
 router.get('/:id', async (req, res) => {
   try {
-    const branch = await db.get('SELECT * FROM branches WHERE id = ?', [req.params.id]);
-    
+    const branch = await db.branch.findUnique({ where: { id: parseInt(req.params.id) } });
+
     if (!branch) {
       return res.status(404).json({ error: 'Branch not found' });
     }
-    
+
     res.json(branch);
   } catch (error) {
     console.error('Error fetching branch:', error);
@@ -42,38 +42,33 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 
     // Check if branch name already exists
-    const existing = await db.get('SELECT * FROM branches WHERE name = ?', [name]);
+    const existing = await db.branch.findUnique({ where: { name } });
     if (existing) {
       return res.status(400).json({ error: 'Branch with this name already exists' });
     }
 
-    // Create the branch
-    const result = await db.run(
-      'INSERT INTO branches (name, address, phone) VALUES (?, ?, ?)',
-      [name, address, phone]
-    );
-
-    const branchId = result.lastID;
-
-    // If username and password are provided, create branch user account
+    // If creating a branch user too, ensure the username is free first
     if (username && password) {
-      // Check if username already exists
-      const usernameExists = await db.get('SELECT * FROM branch_users WHERE username = ?', [username]);
+      const usernameExists = await db.branchUser.findUnique({ where: { username } });
       if (usernameExists) {
-        // Rollback branch creation
-        await db.run('DELETE FROM branches WHERE id = ?', [branchId]);
         return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
       }
-
-      // Hash password and create branch user
-      const hashedPassword = await bcrypt.hash(password, 10);
-      await db.run(
-        'INSERT INTO branch_users (branchId, username, password) VALUES (?, ?, ?)',
-        [branchId, username, hashedPassword]
-      );
     }
 
-    const newBranch = await db.get('SELECT * FROM branches WHERE id = ?', [branchId]);
+    // Create the branch (and optionally a branch user) atomically
+    const newBranch = await db.$transaction(async (tx) => {
+      const branch = await tx.branch.create({ data: { name, address, phone } });
+
+      if (username && password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await tx.branchUser.create({
+          data: { branchId: branch.id, username, password: hashedPassword }
+        });
+      }
+
+      return branch;
+    });
+
     res.status(201).json(newBranch);
   } catch (error) {
     console.error('Error creating branch:', error);
@@ -84,28 +79,34 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch (admin only)
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
+    const branchId = parseInt(req.params.id);
     const { name, address, phone } = req.body;
 
     // Check if branch exists
-    const existing = await db.get('SELECT * FROM branches WHERE id = ?', [req.params.id]);
+    const existing = await db.branch.findUnique({ where: { id: branchId } });
     if (!existing) {
       return res.status(404).json({ error: 'Branch not found' });
     }
 
     // Check if name is being changed and if new name already exists
     if (name && name !== existing.name) {
-      const nameExists = await db.get('SELECT * FROM branches WHERE name = ? AND id != ?', [name, req.params.id]);
+      const nameExists = await db.branch.findFirst({
+        where: { name, NOT: { id: branchId } }
+      });
       if (nameExists) {
         return res.status(400).json({ error: 'Branch with this name already exists' });
       }
     }
 
-    await db.run(
-      'UPDATE branches SET name = ?, address = ?, phone = ? WHERE id = ?',
-      [name || existing.name, address || existing.address, phone || existing.phone, req.params.id]
-    );
+    const updatedBranch = await db.branch.update({
+      where: { id: branchId },
+      data: {
+        name: name || existing.name,
+        address: address || existing.address,
+        phone: phone || existing.phone
+      }
+    });
 
-    const updatedBranch = await db.get('SELECT * FROM branches WHERE id = ?', [req.params.id]);
     res.json(updatedBranch);
   } catch (error) {
     console.error('Error updating branch:', error);
@@ -116,21 +117,22 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Delete branch (admin only)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const branch = await db.get('SELECT * FROM branches WHERE id = ?', [req.params.id]);
-    
+    const branchId = parseInt(req.params.id);
+    const branch = await db.branch.findUnique({ where: { id: branchId } });
+
     if (!branch) {
       return res.status(404).json({ error: 'Branch not found' });
     }
 
     // Check if branch has products
-    const productCount = await db.get('SELECT COUNT(*) as count FROM products WHERE branchId = ?', [req.params.id]);
-    if (productCount.count > 0) {
-      return res.status(400).json({ 
-        error: `Cannot delete branch. It has ${productCount.count} product(s) associated with it. Please delete or reassign products first.` 
+    const productCount = await db.product.count({ where: { branchId } });
+    if (productCount > 0) {
+      return res.status(400).json({
+        error: `Cannot delete branch. It has ${productCount} product(s) associated with it. Please delete or reassign products first.`
       });
     }
 
-    await db.run('DELETE FROM branches WHERE id = ?', [req.params.id]);
+    await db.branch.delete({ where: { id: branchId } });
     res.json({ message: 'Branch deleted successfully' });
   } catch (error) {
     console.error('Error deleting branch:', error);
@@ -139,5 +141,3 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 export default router;
-
-

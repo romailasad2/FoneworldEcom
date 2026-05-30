@@ -15,12 +15,10 @@ router.post('/login', async (req, res) => {
     }
 
     // Find branch user in database
-    const branchUser = await db.get(`
-      SELECT bu.*, b.name as branchName, b.id as branchId
-      FROM branch_users bu
-      LEFT JOIN branches b ON bu.branchId = b.id
-      WHERE bu.username = ?
-    `, [username]);
+    const branchUser = await db.branchUser.findUnique({
+      where: { username },
+      include: { branch: true }
+    });
 
     if (!branchUser) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -33,10 +31,12 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    const branchName = branchUser.branch ? branchUser.branch.name : null;
+
     // Generate JWT token
     const token = jwt.sign(
-      { 
-        id: branchUser.id, 
+      {
+        id: branchUser.id,
         username: branchUser.username,
         branchId: branchUser.branchId,
         type: 'branch'
@@ -51,7 +51,7 @@ router.post('/login', async (req, res) => {
         id: branchUser.id,
         username: branchUser.username,
         branchId: branchUser.branchId,
-        branchName: branchUser.branchName
+        branchName
       }
     });
   } catch (error) {
@@ -74,12 +74,12 @@ router.get('/verify', async (req, res) => {
       if (err) {
         return res.status(403).json({ error: 'Invalid token' });
       }
-      
+
       // Check if token is for a branch user
       if (decoded.type !== 'branch') {
         return res.status(403).json({ error: 'Invalid token type' });
       }
-      
+
       res.json({ valid: true, user: decoded });
     });
   } catch (error) {
@@ -88,7 +88,3 @@ router.get('/verify', async (req, res) => {
 });
 
 export default router;
-
-
-
-

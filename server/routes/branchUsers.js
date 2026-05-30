@@ -5,16 +5,25 @@ import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Flatten the branch relation into branchName/branchAddress and strip the password hash.
+const presentBranchUser = (bu) => {
+  if (!bu) return bu;
+  const { password, branch, ...rest } = bu;
+  return {
+    ...rest,
+    branchName: branch ? branch.name : null,
+    branchAddress: branch ? branch.address : null
+  };
+};
+
 // Get all branch users (admin only)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const branchUsers = await db.all(`
-      SELECT bu.*, b.name as branchName, b.address as branchAddress
-      FROM branch_users bu
-      LEFT JOIN branches b ON bu.branchId = b.id
-      ORDER BY bu.createdAt DESC
-    `);
-    res.json(branchUsers);
+    const branchUsers = await db.branchUser.findMany({
+      include: { branch: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(branchUsers.map(presentBranchUser));
   } catch (error) {
     console.error('Error fetching branch users:', error);
     res.status(500).json({ error: 'Failed to fetch branch users' });
@@ -24,11 +33,12 @@ router.get('/', authenticateToken, async (req, res) => {
 // Get branch users by branch ID (admin only) - MUST come before /:id route
 router.get('/branch/:branchId', authenticateToken, async (req, res) => {
   try {
-    const branchUsers = await db.all(
-      'SELECT * FROM branch_users WHERE branchId = ? ORDER BY createdAt DESC',
-      [req.params.branchId]
-    );
-    res.json(branchUsers);
+    const branchUsers = await db.branchUser.findMany({
+      where: { branchId: parseInt(req.params.branchId) },
+      include: { branch: true },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(branchUsers.map(presentBranchUser));
   } catch (error) {
     console.error('Error fetching branch users:', error);
     res.status(500).json({ error: 'Failed to fetch branch users' });
@@ -38,20 +48,16 @@ router.get('/branch/:branchId', authenticateToken, async (req, res) => {
 // Get single branch user (admin only) - MUST come after /branch/:branchId
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
-    const branchUser = await db.get(`
-      SELECT bu.*, b.name as branchName
-      FROM branch_users bu
-      LEFT JOIN branches b ON bu.branchId = b.id
-      WHERE bu.id = ?
-    `, [req.params.id]);
-    
+    const branchUser = await db.branchUser.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { branch: true }
+    });
+
     if (!branchUser) {
       return res.status(404).json({ error: 'Branch user not found' });
     }
-    
-    // Don't send password hash
-    delete branchUser.password;
-    res.json(branchUser);
+
+    res.json(presentBranchUser(branchUser));
   } catch (error) {
     console.error('Error fetching branch user:', error);
     res.status(500).json({ error: 'Failed to fetch branch user' });
@@ -67,14 +73,16 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Branch ID, username, and password are required' });
     }
 
+    const parsedBranchId = parseInt(branchId);
+
     // Verify branch exists
-    const branch = await db.get('SELECT * FROM branches WHERE id = ?', [branchId]);
+    const branch = await db.branch.findUnique({ where: { id: parsedBranchId } });
     if (!branch) {
       return res.status(404).json({ error: 'Branch not found' });
     }
 
     // Check if username already exists
-    const existing = await db.get('SELECT * FROM branch_users WHERE username = ?', [username]);
+    const existing = await db.branchUser.findUnique({ where: { username } });
     if (existing) {
       return res.status(400).json({ error: 'Username already exists' });
     }
@@ -82,21 +90,16 @@ router.post('/', authenticateToken, async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await db.run(
-      'INSERT INTO branch_users (branchId, username, password) VALUES (?, ?, ?)',
-      [branchId, username, hashedPassword]
-    );
+    const created = await db.branchUser.create({
+      data: { branchId: parsedBranchId, username, password: hashedPassword }
+    });
 
-    const newBranchUser = await db.get(`
-      SELECT bu.*, b.name as branchName
-      FROM branch_users bu
-      LEFT JOIN branches b ON bu.branchId = b.id
-      WHERE bu.id = ?
-    `, [result.lastID]);
+    const newBranchUser = await db.branchUser.findUnique({
+      where: { id: created.id },
+      include: { branch: true }
+    });
 
-    // Don't send password hash
-    delete newBranchUser.password;
-    res.status(201).json(newBranchUser);
+    res.status(201).json(presentBranchUser(newBranchUser));
   } catch (error) {
     console.error('Error creating branch user:', error);
     res.status(500).json({ error: 'Failed to create branch user' });
@@ -106,17 +109,19 @@ router.post('/', authenticateToken, async (req, res) => {
 // Update branch user (admin only)
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
+    const id = parseInt(req.params.id);
     const { username, password, branchId } = req.body;
+    const parsedBranchId = branchId !== undefined ? parseInt(branchId) : undefined;
 
     // Check if branch user exists
-    const existing = await db.get('SELECT * FROM branch_users WHERE id = ?', [req.params.id]);
+    const existing = await db.branchUser.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ error: 'Branch user not found' });
     }
 
     // If branchId is being changed, verify new branch exists
-    if (branchId && branchId !== existing.branchId) {
-      const branch = await db.get('SELECT * FROM branches WHERE id = ?', [branchId]);
+    if (parsedBranchId !== undefined && parsedBranchId !== existing.branchId) {
+      const branch = await db.branch.findUnique({ where: { id: parsedBranchId } });
       if (!branch) {
         return res.status(404).json({ error: 'Branch not found' });
       }
@@ -124,59 +129,36 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Check if username is being changed and if new username already exists
     if (username && username !== existing.username) {
-      const usernameExists = await db.get('SELECT * FROM branch_users WHERE username = ? AND id != ?', [username, req.params.id]);
+      const usernameExists = await db.branchUser.findFirst({
+        where: { username, NOT: { id } }
+      });
       if (usernameExists) {
         return res.status(400).json({ error: 'Username already exists' });
       }
     }
 
-    // Prepare update fields
-    let updateFields = [];
-    let updateValues = [];
-
+    // Prepare update data
+    const data = {};
     if (username && username !== existing.username) {
-      updateFields.push('username = ?');
-      updateValues.push(username);
+      data.username = username;
     }
-
     if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateFields.push('password = ?');
-      updateValues.push(hashedPassword);
+      data.password = await bcrypt.hash(password, 10);
+    }
+    if (parsedBranchId !== undefined && parsedBranchId !== existing.branchId) {
+      data.branchId = parsedBranchId;
     }
 
-    if (branchId && branchId !== existing.branchId) {
-      updateFields.push('branchId = ?');
-      updateValues.push(branchId);
+    if (Object.keys(data).length > 0) {
+      await db.branchUser.update({ where: { id }, data });
     }
 
-    if (updateFields.length === 0) {
-      // No changes to make
-      const branchUser = await db.get(`
-        SELECT bu.*, b.name as branchName
-        FROM branch_users bu
-        LEFT JOIN branches b ON bu.branchId = b.id
-        WHERE bu.id = ?
-      `, [req.params.id]);
-      delete branchUser.password;
-      return res.json(branchUser);
-    }
+    const updatedBranchUser = await db.branchUser.findUnique({
+      where: { id },
+      include: { branch: true }
+    });
 
-    updateValues.push(req.params.id);
-    const updateQuery = `UPDATE branch_users SET ${updateFields.join(', ')} WHERE id = ?`;
-    
-    await db.run(updateQuery, updateValues);
-
-    const updatedBranchUser = await db.get(`
-      SELECT bu.*, b.name as branchName
-      FROM branch_users bu
-      LEFT JOIN branches b ON bu.branchId = b.id
-      WHERE bu.id = ?
-    `, [req.params.id]);
-
-    // Don't send password hash
-    delete updatedBranchUser.password;
-    res.json(updatedBranchUser);
+    res.json(presentBranchUser(updatedBranchUser));
   } catch (error) {
     console.error('Error updating branch user:', error);
     res.status(500).json({ error: 'Failed to update branch user' });
@@ -186,13 +168,14 @@ router.put('/:id', authenticateToken, async (req, res) => {
 // Delete branch user (admin only)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const branchUser = await db.get('SELECT * FROM branch_users WHERE id = ?', [req.params.id]);
-    
+    const id = parseInt(req.params.id);
+    const branchUser = await db.branchUser.findUnique({ where: { id } });
+
     if (!branchUser) {
       return res.status(404).json({ error: 'Branch user not found' });
     }
 
-    await db.run('DELETE FROM branch_users WHERE id = ?', [req.params.id]);
+    await db.branchUser.delete({ where: { id } });
     res.json({ message: 'Branch user deleted successfully' });
   } catch (error) {
     console.error('Error deleting branch user:', error);
@@ -201,4 +184,3 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 export default router;
-

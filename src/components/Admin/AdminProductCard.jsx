@@ -1,5 +1,6 @@
 import React from 'react'
 import { Edit, Trash2 } from 'lucide-react'
+import { resolveImageUrl } from '../../config.js'
 import '../ProductCard.css'
 import './AdminProductCard.css'
 
@@ -14,9 +15,7 @@ const AdminProductCard = ({ product, branches, onEdit, onDelete }) => {
     return branch ? branch.name : 'Unknown Branch'
   }
 
-  const imageSrc = product.image && product.image.startsWith('/uploads/')
-    ? `https://foneworldecom.onrender.com${product.image}`
-    : product.image || 'https://via.placeholder.com/200x200?text=Mobile+Phone'
+  const imageSrc = resolveImageUrl(product.image) || 'https://via.placeholder.com/200x200?text=Mobile+Phone'
 
   return (
     <div className="product-card admin-product-card">

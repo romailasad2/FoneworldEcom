@@ -35,7 +35,7 @@ const upload = multer({
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -49,16 +49,26 @@ const uploadOptional = upload.single('image');
 
 const router = express.Router();
 
+// Flatten the branch relation into branchName/branchAddress/branchPhone.
+const presentProduct = (p) => {
+  if (!p) return p;
+  const { branch, ...rest } = p;
+  return {
+    ...rest,
+    branchName: branch ? branch.name : null,
+    branchAddress: branch ? branch.address : null,
+    branchPhone: branch ? branch.phone : null
+  };
+};
+
 // Get all products (public)
 router.get('/', async (req, res) => {
   try {
-    const products = await db.all(`
-      SELECT p.*, b.name as branchName, b.address as branchAddress, b.phone as branchPhone
-      FROM products p
-      LEFT JOIN branches b ON p.branchId = b.id
-      ORDER BY p.id DESC
-    `);
-    res.json(products);
+    const products = await db.product.findMany({
+      include: { branch: true },
+      orderBy: { id: 'desc' }
+    });
+    res.json(products.map(presentProduct));
   } catch (error) {
     console.error('Error fetching products:', error);
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -69,19 +79,16 @@ router.get('/', async (req, res) => {
 router.get('/check-imei/:imeiOrSerial', async (req, res) => {
   try {
     const { imeiOrSerial } = req.params;
-    
+
     if (!imeiOrSerial || imeiOrSerial.trim() === '') {
       return res.json({ exists: false });
     }
 
-    const existingProduct = await db.get(
-      `SELECT id, name, brand, isSold, soldDate, repurchasedDate, createdAt 
-       FROM products 
-       WHERE imeiOrSerial = ? 
-       ORDER BY createdAt DESC 
-       LIMIT 1`,
-      [imeiOrSerial.trim()]
-    );
+    const existingProduct = await db.product.findFirst({
+      where: { imeiOrSerial: imeiOrSerial.trim() },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, name: true, brand: true, isSold: true, soldDate: true, repurchasedDate: true, createdAt: true }
+    });
 
     if (!existingProduct) {
       return res.json({ exists: false });
@@ -103,25 +110,17 @@ router.get('/check-imei/:imeiOrSerial', async (req, res) => {
 // Get single product (public)
 router.get('/:id', async (req, res) => {
   try {
-    const product = await db.get(`
-      SELECT p.*, b.name as branchName, b.address as branchAddress, b.phone as branchPhone
-      FROM products p
-      LEFT JOIN branches b ON p.branchId = b.id
-      WHERE p.id = ?
-    `, [req.params.id]);
+    const product = await db.product.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { branch: true }
+    });
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
 
-    console.log('Fetching product ID:', req.params.id);
-    console.log('Product data:', JSON.stringify(product, null, 2));
-    console.log('IMEI/Serial value:', product.imeiOrSerial, 'Type:', typeof product.imeiOrSerial);
-    console.log('All product keys:', Object.keys(product));
-
-    // Ensure imeiOrSerial is always included (even if null)
     const response = {
-      ...product,
+      ...presentProduct(product),
       imeiOrSerial: product.imeiOrSerial !== undefined ? product.imeiOrSerial : null
     };
 
@@ -134,26 +133,13 @@ router.get('/:id', async (req, res) => {
 
 // Create product (admin only)
 router.post('/', authenticateToken, (req, res, next) => {
-  console.log('Product creation request received');
-  console.log('Content-Type:', req.headers['content-type']);
-  
   // Handle file upload (optional)
   uploadOptional(req, res, (err) => {
     if (err) {
       // Only fail if it's not a "no file" error
       if (err.code !== 'LIMIT_UNEXPECTED_FILE' && err.message !== 'Unexpected field') {
         console.error('Multer error:', err);
-        console.error('Multer error details:', err.message, err.code);
         return res.status(400).json({ error: err.message || 'File upload error' });
-      }
-      // If it's just "no file", that's okay - continue
-      console.log('No file uploaded, continuing without file');
-    } else {
-      console.log('Multer processing complete');
-      if (req.file) {
-        console.log('File uploaded:', req.file.filename);
-      } else {
-        console.log('No file uploaded');
       }
     }
     next();
@@ -161,10 +147,6 @@ router.post('/', authenticateToken, (req, res, next) => {
 }, async (req, res) => {
   try {
     const { name, brand, price, storage, color, branchId, stock, grade, description, image, productType, imeiOrSerial } = req.body;
-
-    console.log('Received product data:', { name, brand, price, storage, color, branchId, stock, grade, description, image, productType, imeiOrSerial });
-    console.log('File uploaded:', req.file ? req.file.filename : 'none');
-    console.log('Image URL provided:', image || 'none');
 
     // Parse numeric fields (they come as strings from FormData)
     const parsedPrice = parseFloat(price);
@@ -225,13 +207,11 @@ router.post('/', authenticateToken, (req, res, next) => {
     // Validate IMEI/Serial Number
     if (imeiOrSerial && imeiOrSerial.trim() !== '') {
       const trimmedImei = imeiOrSerial.trim();
-      
+
       // For phones, IMEI must be exactly 15 digits
       if (productType === 'Phone' || !productType) {
-        // Remove any spaces or dashes that might be in the IMEI
         const cleanImei = trimmedImei.replace(/[\s-]/g, '');
-        
-        // Check if it's exactly 15 digits
+
         if (!/^\d{15}$/.test(cleanImei)) {
           if (req.file) {
             try {
@@ -240,23 +220,18 @@ router.post('/', authenticateToken, (req, res, next) => {
               console.error('Error deleting file:', unlinkError);
             }
           }
-          return res.status(400).json({ 
-            error: 'Invalid IMEI number. IMEI must be exactly 15 digits (numbers only).' 
+          return res.status(400).json({
+            error: 'Invalid IMEI number. IMEI must be exactly 15 digits (numbers only).'
           });
         }
       }
-      
+
       // Check for duplicate IMEI/Serial (excluding sold products for repurchase detection)
-      const duplicateCheck = await db.get(
-        `SELECT id, name, brand, isSold 
-         FROM products 
-         WHERE imeiOrSerial = ? AND isSold = 0
-         LIMIT 1`,
-        [trimmedImei]
-      );
+      const duplicateCheck = await db.product.findFirst({
+        where: { imeiOrSerial: trimmedImei, isSold: 0 }
+      });
 
       if (duplicateCheck) {
-        // IMEI/Serial already exists and is not sold - this is a duplicate
         if (req.file) {
           try {
             fs.unlinkSync(req.file.path);
@@ -264,8 +239,8 @@ router.post('/', authenticateToken, (req, res, next) => {
             console.error('Error deleting file:', unlinkError);
           }
         }
-        return res.status(400).json({ 
-          error: `This IMEI/Serial Number already exists in the system (Product: ${duplicateCheck.brand} ${duplicateCheck.name}). Each device must have a unique IMEI/Serial Number.` 
+        return res.status(400).json({
+          error: `This IMEI/Serial Number already exists in the system (Product: ${duplicateCheck.brand} ${duplicateCheck.name}). Each device must have a unique IMEI/Serial Number.`
         });
       }
     }
@@ -274,14 +249,10 @@ router.post('/', authenticateToken, (req, res, next) => {
     let repurchaseInfo = null;
     if (imeiOrSerial && imeiOrSerial.trim() !== '') {
       const trimmedImei = imeiOrSerial.trim().replace(/[\s-]/g, '');
-      const existingProduct = await db.get(
-        `SELECT id, name, brand, isSold, soldDate, repurchasedDate, createdAt 
-         FROM products 
-         WHERE imeiOrSerial = ? 
-         ORDER BY createdAt DESC 
-         LIMIT 1`,
-        [trimmedImei]
-      );
+      const existingProduct = await db.product.findFirst({
+        where: { imeiOrSerial: trimmedImei },
+        orderBy: { createdAt: 'desc' }
+      });
 
       if (existingProduct) {
         if (existingProduct.isSold === 1) {
@@ -296,7 +267,6 @@ router.post('/', authenticateToken, (req, res, next) => {
             }
           };
         } else {
-          // IMEI/Serial already exists and is not sold - duplicate
           if (req.file) {
             try {
               fs.unlinkSync(req.file.path);
@@ -319,52 +289,39 @@ router.post('/', authenticateToken, (req, res, next) => {
 
     // Determine if this is a repurchase
     const isRepurchase = repurchaseInfo !== null;
-    const repurchasedDate = isRepurchase ? new Date().toISOString() : null;
+    const repurchasedDate = isRepurchase ? new Date() : null;
 
-    console.log('Inserting product with data:', {
-      name, brand, price: parsedPrice, image: imagePath, storage, color,
-      branchId: parsedBranchId, stock: parsedStock, grade: grade || 'A', description,
-      productType: productType || 'Phone', imeiOrSerial: imeiOrSerial?.trim() || null,
-      isRepurchase, repurchasedDate
+    const newProduct = await db.product.create({
+      data: {
+        name,
+        brand,
+        price: parsedPrice,
+        image: imagePath,
+        storage,
+        color,
+        branchId: finalBranchId,
+        stock: parsedStock,
+        grade: grade || 'A',
+        description: description || '',
+        productType: productType || 'Phone',
+        imeiOrSerial: imeiOrSerial?.trim() ? imeiOrSerial.trim().replace(/[\s-]/g, '') : null,
+        isSold: 0,
+        repurchasedDate
+      }
     });
 
-    const result = await db.run(
-      `INSERT INTO products (name, brand, price, image, storage, color, branchId, stock, grade, description, productType, imeiOrSerial, isSold, repurchasedDate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
-      [
-        name, brand, parsedPrice, imagePath, storage, color, finalBranchId, parsedStock, 
-        grade || 'A', description || '', productType || 'Phone', 
-        (imeiOrSerial?.trim() ? imeiOrSerial.trim().replace(/[\s-]/g, '') : null), repurchasedDate
-      ]
-    );
+    console.log('Product created successfully with ID:', newProduct.id);
 
-    console.log('Insert result:', result);
-
-    if (!result || result.lastID === undefined || result.lastID === null) {
-      console.error('Insert failed - no lastID returned. Result:', result);
-      throw new Error('Failed to insert product into database - no ID returned');
-    }
-
-    const newProduct = await db.get('SELECT * FROM products WHERE id = ?', [result.lastID]);
-    if (!newProduct) {
-      throw new Error('Product was created but could not be retrieved');
-    }
-    
-    console.log('Product created successfully with ID:', result.lastID);
-    console.log('Created product data:', JSON.stringify(newProduct, null, 2));
-    console.log('IMEI/Serial in created product:', newProduct.imeiOrSerial);
-    
     // Return product with repurchase info if applicable
     const response = { ...newProduct };
     if (repurchaseInfo) {
       response.repurchaseWarning = repurchaseInfo;
     }
-    
+
     res.status(201).json(response);
   } catch (error) {
     console.error('Error creating product:', error);
     console.error('Error stack:', error.stack);
-    // Delete uploaded file if error occurs
     if (req.file) {
       try {
         fs.unlinkSync(req.file.path);
@@ -381,23 +338,21 @@ router.put('/:id', authenticateToken, (req, res, next) => {
   // Handle file upload (optional)
   uploadOptional(req, res, (err) => {
     if (err) {
-      // Only fail if it's not a "no file" error
       if (err.code !== 'LIMIT_UNEXPECTED_FILE' && err.message !== 'Unexpected field') {
         console.error('Multer error:', err);
         return res.status(400).json({ error: err.message || 'File upload error' });
       }
-      // If it's just "no file", that's okay - continue
     }
     next();
   });
 }, async (req, res) => {
   try {
+    const productId = parseInt(req.params.id);
     const { name, brand, price, image, storage, color, branchId, stock, grade, description, productType, imeiOrSerial, isSold } = req.body;
 
     // Check if product exists
-    const existing = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
+    const existing = await db.product.findUnique({ where: { id: productId } });
     if (!existing) {
-      // Delete uploaded file if product doesn't exist
       if (req.file) {
         fs.unlinkSync(req.file.path);
       }
@@ -405,7 +360,7 @@ router.put('/:id', authenticateToken, (req, res, next) => {
     }
 
     // If branch user, ensure they can only edit their branch's products
-    let finalBranchId = branchId || existing.branchId;
+    let finalBranchId = (branchId !== undefined && branchId !== '') ? parseInt(branchId) : existing.branchId;
     if (req.isBranchUser && req.branchUser) {
       if (existing.branchId !== req.branchUser.branchId) {
         if (req.file) {
@@ -413,7 +368,6 @@ router.put('/:id', authenticateToken, (req, res, next) => {
         }
         return res.status(403).json({ error: 'You can only edit products from your branch.' });
       }
-      // Force branchId to their branch
       finalBranchId = req.branchUser.branchId;
     }
 
@@ -421,13 +375,11 @@ router.put('/:id', authenticateToken, (req, res, next) => {
     if (imeiOrSerial !== undefined && imeiOrSerial.trim() !== '') {
       const trimmedImei = imeiOrSerial.trim();
       const finalProductType = productType !== undefined ? productType : existing.productType || 'Phone';
-      
+
       // For phones, IMEI must be exactly 15 digits
       if (finalProductType === 'Phone') {
-        // Remove any spaces or dashes that might be in the IMEI
         const cleanImei = trimmedImei.replace(/[\s-]/g, '');
-        
-        // Check if it's exactly 15 digits
+
         if (!/^\d{15}$/.test(cleanImei)) {
           if (req.file) {
             try {
@@ -436,20 +388,22 @@ router.put('/:id', authenticateToken, (req, res, next) => {
               console.error('Error deleting file:', unlinkError);
             }
           }
-          return res.status(400).json({ 
-            error: 'Invalid IMEI number. IMEI must be exactly 15 digits (numbers only).' 
+          return res.status(400).json({
+            error: 'Invalid IMEI number. IMEI must be exactly 15 digits (numbers only).'
           });
         }
       }
-      
+
       // Check for duplicate IMEI/Serial (excluding current product and sold products)
       if (trimmedImei.replace(/[\s-]/g, '') !== (existing.imeiOrSerial || '').replace(/[\s-]/g, '')) {
-        const conflictingProduct = await db.get(
-          `SELECT id, name, brand FROM products 
-           WHERE imeiOrSerial = ? AND id != ? AND isSold = 0`,
-          [trimmedImei.replace(/[\s-]/g, ''), req.params.id]
-        );
-        
+        const conflictingProduct = await db.product.findFirst({
+          where: {
+            imeiOrSerial: trimmedImei.replace(/[\s-]/g, ''),
+            id: { not: productId },
+            isSold: 0
+          }
+        });
+
         if (conflictingProduct) {
           if (req.file) {
             try {
@@ -458,8 +412,8 @@ router.put('/:id', authenticateToken, (req, res, next) => {
               console.error('Error deleting file:', unlinkError);
             }
           }
-          return res.status(400).json({ 
-            error: `This IMEI/Serial Number is already in use by another product (${conflictingProduct.brand} ${conflictingProduct.name}). Each device must have a unique IMEI/Serial Number.` 
+          return res.status(400).json({
+            error: `This IMEI/Serial Number is already in use by another product (${conflictingProduct.brand} ${conflictingProduct.name}). Each device must have a unique IMEI/Serial Number.`
           });
         }
       }
@@ -486,50 +440,45 @@ router.put('/:id', authenticateToken, (req, res, next) => {
 
     // Handle sold status
     let soldDate = existing.soldDate;
+    let newIsSoldValue = existing.isSold;
     if (isSold !== undefined) {
       const newIsSold = isSold === true || isSold === 1 || isSold === '1';
       const oldIsSold = existing.isSold === 1;
-      
+      newIsSoldValue = newIsSold ? 1 : 0;
+
       if (newIsSold && !oldIsSold) {
-        // Product is being marked as sold
-        soldDate = new Date().toISOString();
+        soldDate = new Date();
       } else if (!newIsSold && oldIsSold) {
-        // Product is being marked as available again
         soldDate = null;
       }
     }
 
-    await db.run(
-      `UPDATE products 
-       SET name = ?, brand = ?, price = ?, image = ?, storage = ?, color = ?, 
-           branchId = ?, stock = ?, grade = ?, description = ?, productType = ?, 
-           imeiOrSerial = ?, isSold = ?, soldDate = ?, updatedAt = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [
-        name || existing.name,
-        brand || existing.brand,
-        price !== undefined ? price : existing.price,
-        imagePath,
-        storage || existing.storage,
-        color || existing.color,
-        finalBranchId,
-        stock !== undefined ? stock : existing.stock,
-        grade !== undefined ? grade : existing.grade,
-        description !== undefined ? description : existing.description,
-        productType !== undefined ? productType : existing.productType || 'Phone',
-        imeiOrSerial !== undefined ? (imeiOrSerial.trim() ? imeiOrSerial.trim().replace(/[\s-]/g, '') : null) : existing.imeiOrSerial,
-        isSold !== undefined ? (isSold === true || isSold === 1 || isSold === '1' ? 1 : 0) : existing.isSold,
-        soldDate,
-        req.params.id
-      ]
-    );
+    const updatedProduct = await db.product.update({
+      where: { id: productId },
+      data: {
+        name: name || existing.name,
+        brand: brand || existing.brand,
+        price: price !== undefined ? parseFloat(price) : existing.price,
+        image: imagePath,
+        storage: storage || existing.storage,
+        color: color || existing.color,
+        branchId: finalBranchId,
+        stock: stock !== undefined ? parseInt(stock) : existing.stock,
+        grade: grade !== undefined ? grade : existing.grade,
+        description: description !== undefined ? description : existing.description,
+        productType: productType !== undefined ? productType : existing.productType || 'Phone',
+        imeiOrSerial: imeiOrSerial !== undefined
+          ? (imeiOrSerial.trim() ? imeiOrSerial.trim().replace(/[\s-]/g, '') : null)
+          : existing.imeiOrSerial,
+        isSold: newIsSoldValue,
+        soldDate
+      }
+    });
 
-    const updatedProduct = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
     res.json(updatedProduct);
   } catch (error) {
     console.error('Error updating product:', error);
     console.error('Error stack:', error.stack);
-    // Delete uploaded file if error occurs
     if (req.file) {
       try {
         fs.unlinkSync(req.file.path);
@@ -544,8 +493,9 @@ router.put('/:id', authenticateToken, (req, res, next) => {
 // Delete product (admin or branch user)
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const product = await db.get('SELECT * FROM products WHERE id = ?', [req.params.id]);
-    
+    const productId = parseInt(req.params.id);
+    const product = await db.product.findUnique({ where: { id: productId } });
+
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -569,7 +519,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       }
     }
 
-    await db.run('DELETE FROM products WHERE id = ?', [req.params.id]);
+    await db.product.delete({ where: { id: productId } });
     res.json({ message: 'Product deleted successfully' });
   } catch (error) {
     console.error('Error deleting product:', error);
@@ -578,4 +528,3 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 });
 
 export default router;
-

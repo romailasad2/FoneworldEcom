@@ -16,7 +16,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user in database
-    const user = await db.get('SELECT * FROM admin_users WHERE username = ?', [username]);
+    const user = await db.adminUser.findUnique({ where: { username } });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -74,12 +74,15 @@ router.get('/verify', async (req, res) => {
 router.get('/me', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await db.get('SELECT id, username, createdAt FROM admin_users WHERE id = ?', [userId]);
-    
+    const user = await db.adminUser.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, createdAt: true }
+    });
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     res.json(user);
   } catch (error) {
     console.error('Get admin info error:', error);
@@ -91,21 +94,21 @@ router.get('/me', authenticateToken, async (req, res) => {
 router.get('/password-info', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await db.get('SELECT * FROM admin_users WHERE id = ?', [userId]);
-    
+    const user = await db.adminUser.findUnique({ where: { id: userId } });
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Check if password is the default password (admin123)
     const defaultPassword = 'admin123';
     const isDefaultPassword = await bcrypt.compare(defaultPassword, user.password);
-    
+
     res.json({
       isDefault: isDefaultPassword,
       defaultPassword: isDefaultPassword ? defaultPassword : null,
-      message: isDefaultPassword 
-        ? 'Using default password: admin123' 
+      message: isDefaultPassword
+        ? 'Using default password: admin123'
         : 'Password has been changed from default'
     });
   } catch (error) {
@@ -121,8 +124,8 @@ router.put('/update', authenticateToken, async (req, res) => {
     const { currentPassword, newUsername, newPassword } = req.body;
 
     // Get current user from database
-    const user = await db.get('SELECT * FROM admin_users WHERE id = ?', [userId]);
-    
+    const user = await db.adminUser.findUnique({ where: { id: userId } });
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -142,12 +145,14 @@ router.put('/update', authenticateToken, async (req, res) => {
     // Update username if provided
     if (newUsername && newUsername !== user.username) {
       // Check if new username already exists
-      const existingUser = await db.get('SELECT * FROM admin_users WHERE username = ? AND id != ?', [newUsername, userId]);
+      const existingUser = await db.adminUser.findFirst({
+        where: { username: newUsername, NOT: { id: userId } }
+      });
       if (existingUser) {
         return res.status(400).json({ error: 'Username already exists' });
       }
 
-      await db.run('UPDATE admin_users SET username = ? WHERE id = ?', [newUsername, userId]);
+      await db.adminUser.update({ where: { id: userId }, data: { username: newUsername } });
     }
 
     // Update password if provided
@@ -156,12 +161,15 @@ router.put('/update', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'New password must be at least 6 characters long' });
       }
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await db.run('UPDATE admin_users SET password = ? WHERE id = ?', [hashedPassword, userId]);
+      await db.adminUser.update({ where: { id: userId }, data: { password: hashedPassword } });
     }
 
     // Get updated user info
-    const updatedUser = await db.get('SELECT id, username, createdAt FROM admin_users WHERE id = ?', [userId]);
-    
+    const updatedUser = await db.adminUser.findUnique({
+      where: { id: userId },
+      select: { id: true, username: true, createdAt: true }
+    });
+
     // Generate new token if username changed
     let newToken = null;
     if (newUsername && newUsername !== user.username) {
@@ -184,5 +192,3 @@ router.put('/update', authenticateToken, async (req, res) => {
 });
 
 export default router;
-
-

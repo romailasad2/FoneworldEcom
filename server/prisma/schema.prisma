@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Branch {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  address     String
+  phone       String
+  createdAt   DateTime     @default(now())
+  products    Product[]
+  branchUsers BranchUser[]
+
+  @@map("branches")
+}
+
+model AdminUser {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+model BranchUser {
+  id        Int      @id @default(autoincrement())
+  branchId  Int?
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  branch    Branch?  @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@map("branch_users")
+}
+
+model Product {
+  id              Int       @id @default(autoincrement())
+  name            String
+  brand           String
+  price           Float
+  image           String?
+  storage         String
+  color           String
+  branchId        Int
+  stock           Int       @default(0)
+  rating          Float?
+  grade           String?   @default("A")
+  description     String?
+  productType     String?   @default("Phone")
+  imeiOrSerial    String?   @unique
+  isSold          Int       @default(0)
+  soldDate        DateTime?
+  repurchasedDate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
+  branch          Branch    @relation(fields: [branchId], references: [id])
+
+  @@map("products")
+}

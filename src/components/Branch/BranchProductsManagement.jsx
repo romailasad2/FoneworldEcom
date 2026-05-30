@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Edit, Trash2, Package } from 'lucide-react'
 import { productsAPI } from '../../services/api'
+import { resolveImageUrl } from '../../config.js'
 import ProductForm from '../Admin/ProductForm'
 import './BranchDashboard.css'
 
@@ -130,9 +131,7 @@ const BranchProductsManagement = ({ branchId, branchName }) => {
                 </tr>
               ) : (
                 products.map(product => {
-                  const imageSrc = product.image && product.image.startsWith('/uploads/')
-                    ? `https://foneworldecom.onrender.com${product.image}`
-                    : product.image || 'https://via.placeholder.com/50?text=No+Image'
+                  const imageSrc = resolveImageUrl(product.image) || 'https://via.placeholder.com/50?text=No+Image'
                   
                   const handleImageError = (e) => {
                     if (e.target.src !== 'https://via.placeholder.com/50?text=No+Image') {

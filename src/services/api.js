@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://foneworldecom.onrender.com/api';
+import { API_BASE_URL, SERVER_BASE_URL } from '../config.js';
 
 // Helper function to get auth token (admin or branch)
 const getToken = () => {
@@ -43,7 +43,7 @@ const apiCall = async (endpoint, options = {}) => {
     
     // Provide more helpful error messages
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      throw new Error('Cannot connect to server. Please make sure the backend server is running on https://foneworldecom.onrender.com');
+      throw new Error(`Cannot connect to server. Please make sure the backend server is running on ${SERVER_BASE_URL}`);
     }
     
     if (error.message) {
@@ -112,7 +112,7 @@ export const branchAuthAPI = {
       console.error('Branch login API Error:', error);
       
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Cannot connect to server. Please make sure the backend server is running on https://foneworldecom.onrender.com');
+        throw new Error(`Cannot connect to server. Please make sure the backend server is running on ${SERVER_BASE_URL}`);
       }
       
       if (error.message) {

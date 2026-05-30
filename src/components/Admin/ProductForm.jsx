@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react'
 import { productsAPI } from '../../services/api'
+import { resolveImageUrl } from '../../config.js'
 import './ProductForm.css'
 
 const ProductForm = ({ product, branches, onClose, onSuccess, branchLocked = false }) => {
@@ -66,11 +67,7 @@ const ProductForm = ({ product, branches, onClose, onSuccess, branchLocked = fal
       setImeiError('')
       // Set image preview if product has image
       if (product.image) {
-        if (product.image.startsWith('/uploads/')) {
-          setImagePreview(`https://foneworldecom.onrender.com${product.image}`)
-        } else {
-          setImagePreview(product.image)
-        }
+        setImagePreview(resolveImageUrl(product.image) || product.image)
       }
     } else if (branchLocked && branches.length === 1) {
       // If branch is locked and creating new product, set the branchId
