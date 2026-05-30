@@ -1,8 +1,3 @@
-// Local dev uses localhost:5000; production build uses Render unless overridden.
-const DEFAULT_SERVER = import.meta.env.DEV
-  ? 'http://localhost:5000'
-  : 'https://foneworldecom.onrender.com'
-
 function stripTrailingSlash(url) {
   return url.replace(/\/+$/, '')
 }
@@ -20,8 +15,18 @@ function resolveBases() {
     return { server, api }
   }
 
-  const server = stripTrailingSlash(explicitServer || DEFAULT_SERVER)
-  return { server, api: `${server}/api` }
+  if (explicitServer) {
+    const server = stripTrailingSlash(explicitServer)
+    return { server, api: `${server}/api` }
+  }
+
+  // Local dev talks to the standalone backend on port 5000. Production is a
+  // single service where the API lives on the same origin, so use relative paths.
+  if (import.meta.env.DEV) {
+    return { server: 'http://localhost:5000', api: 'http://localhost:5000/api' }
+  }
+
+  return { server: '', api: '/api' }
 }
 
 const { server, api } = resolveBases()

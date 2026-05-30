@@ -1,0 +1,22 @@
+# Railway / Nixpacks config for a single-service deployment.
+# Builds the React frontend, installs the Express + Prisma backend, applies
+# database migrations on boot, then the server serves both the API and the
+# built frontend from one process.
+#
+# --production=false forces dev dependencies (vite, prisma CLI) to install even
+# though Nixpacks sets NODE_ENV=production.
+
+[phases.install]
+cmds = [
+  "npm install --production=false",
+  "npm install --prefix server --production=false"
+]
+
+[phases.build]
+cmds = [
+  "npm run build",
+  "npm --prefix server run prisma:generate"
+]
+
+[start]
+cmd = "npm --prefix server run prisma:deploy && node server/server.js"

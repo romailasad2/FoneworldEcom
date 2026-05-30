@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from './database.js';
 import authRoutes from './routes/auth.js';
@@ -37,6 +38,17 @@ app.use('/api/branch-users', branchUserRoutes);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FoneWorld API is running' });
 });
+
+// In production (single-service deployment) serve the built React app and let
+// client-side routing handle any non-API path.
+const distPath = path.join(__dirname, '..', 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) return next();
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // Start server
 app.listen(PORT, () => {
